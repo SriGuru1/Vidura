@@ -1,19 +1,23 @@
 from youtube_transcript_api import YouTubeTranscriptApi
-from openai import OpenAI
+from groq import Groq
+from sentence_transformers import SentenceTransformer
 import re
 import faiss
 import numpy as np
-from config import OPENAI_API_KEY, EMBEDDING_MODEL, LLM_MODEL
+from config import GROQ_API_KEY, EMBEDDING_MODEL, LLM_MODEL
 
-# Initialzing OpenAI Client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initializing Groq Client
+client = Groq(api_key=GROQ_API_KEY)
+
+# Initializing Embedding Model
+embedding_model = SentenceTransformer(EMBEDDING_MODEL)
 
 
 # 1. Extracting YT Video ID (check & return video id)
 def extract_video_id(url):
     patterns = [
-        r"(?:v|\/)([0-9A-Za-z_-]{11}).*",
-        r"youtu\.be\/([0-9A-Za-z_-]{11})"
+        r"(?:v=|\/)([0-9A-Za-z_-]{11})",
+        r"youtu\.be\/([0-9A-Za-z_-]{11})",
         r"shorts\/([0-9A-Za-z_-]{11})"
     ]
 
@@ -55,11 +59,8 @@ def split_text(text, chunk_size=150):
 
 # 4. Creating Embeddings (create embeddings from chunks: text chunk -> embedding vector)
 def create_embeddings(text_list):
-    response = client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=text_list
-    )
-    return np.array([item.embedding for item in response.data]).astype("float32")
+    embeddings = embedding_model.encode(text_list)
+    return np.array(embeddings).astype("float32")
 
 
 # 5. Building FAISS Index (store embeddings -> (in) -> Vector -> search)
